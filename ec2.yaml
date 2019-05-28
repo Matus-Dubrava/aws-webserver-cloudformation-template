@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  KeyName:
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Description: name of key pair for SSH login
+Resources:
+  Webserver:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0c6b1d09930fac512
+      KeyName: !Ref KeyName
+      Monitoring: false
+      SecurityGroups:
+        - !Ref WebSG
+      SubnetId: !Ref WebserverSubnet
+
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrRange: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+  WebserverSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      VpcId: !Ref VPC
+  WebSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupName: WebSG
+      GroupDescription: allow SSH and HTTP traffic
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
+          IpProtocol: tcp
+  IGW:
+    Type: "AWS::EC2::InternetGateway"
+  VpcIgwAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+  WebserverRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VPC
+  InternetRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrRange: 0.0.0.0/0
+      GatewayId: !Ref IGW
+      RouteTableId: !Ref WebserverRouteTable
+    DependsOn: VpcIgwAttachment
+
+  WebserverSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref WebserverRouteTable
+      SubnetId: !Ref WebserverSubnet
