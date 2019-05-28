@@ -11,14 +11,29 @@ Resources:
       ImageId: ami-0c6b1d09930fac512
       KeyName: !Ref KeyName
       Monitoring: false
-      SecurityGroups:
+      SecurityGroupIds:
         - !Ref WebSG
       SubnetId: !Ref WebserverSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum update -y
+          yum install httpd -y
+          service httpd start
+          cd /var/www/html
+          echo "<h1>hello world</h1>" > index.html
+  WebserverIp:
+    Type: AWS::EC2::EIP
+  WebserverIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      EIP: !Ref WebserverIp
+      InstanceId: !Ref Webserver
 
   VPC:
     Type: "AWS::EC2::VPC"
     Properties:
-      CidrRange: 10.0.0.0/16
+      CidrBlock: 10.0.0.0/16
       EnableDnsHostnames: true
       EnableDnsSupport: true
   WebserverSubnet:
@@ -55,7 +70,7 @@ Resources:
   InternetRoute:
     Type: "AWS::EC2::Route"
     Properties:
-      DestinationCidrRange: 0.0.0.0/0
+      DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref IGW
       RouteTableId: !Ref WebserverRouteTable
     DependsOn: VpcIgwAttachment
